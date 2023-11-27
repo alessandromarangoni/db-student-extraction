@@ -67,7 +67,7 @@ public class App {
            }
     }
     
-    private static int getUltimoRecord(Statement stm) throws SQLException {
+    private static int getLastRecord(Statement stm) throws SQLException {
 		String query = "SELECT * FROM studenti ORDER BY id DESC LIMIT 1";
 		 ResultSet rs = stm.executeQuery(query);
 		 if (rs.next()) {
@@ -76,6 +76,18 @@ public class App {
 		        return id;
 		    }
 		return 0;
+    }
+    
+    private static void doExtractionQuery(Statement stm, int randomNum) throws SQLException {
+    	String queryselect = "SELECT nome, sede FROM studenti WHERE id = " + randomNum ;
+    	ResultSet rs = stm.executeQuery(queryselect);
+    	if (rs.next()) {
+	        String nome = rs.getString("nome");
+	        String sede = rs.getString("sede");
+	        String queryinsert = "INSERT INTO estrazioni (nome, sede) VALUES('" + nome + "','" + sede + "')";
+	        stm.executeUpdate(queryinsert);
+	    }
+    	
     }
 
     public static void main(String[] args) {
@@ -90,9 +102,10 @@ public class App {
                     	//prendo dati da csv e popolo db
 						CsvReader(stm);
 						//prendo l id dell ultimo record 
-						int Ultimorecord = getUltimoRecord(stm);
+						int Ultimorecord = getLastRecord(stm);
 						int randomNum = (int)(Math.random() * Ultimorecord) + 1;
-						System.out.println(randomNum);
+						doExtractionQuery(stm, randomNum);
+						
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
