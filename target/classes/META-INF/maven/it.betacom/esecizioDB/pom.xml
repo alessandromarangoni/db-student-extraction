@@ -37,9 +37,11 @@
 	    <artifactId>mysql-connector-j</artifactId>
 	    <version>8.2.0</version>
 	</dependency>
-	
-
-
+	<dependency>
+    <groupId>org.apache.commons</groupId>
+	    <artifactId>commons-csv</artifactId>
+	    <version>1.8</version> <!-- Verifica l'ultima versione disponibile -->
+	</dependency>
   </dependencies>
 
   <build>
