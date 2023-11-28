@@ -10,9 +10,7 @@ public class DB {
 	private DB() {
 		try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            System.out.println("driver caricato");
         } catch (ClassNotFoundException e) {
-        	System.out.println("driver NON caricato");
         }
 		this.connection = "jdbc:mysql://localhost:3306/";
 		this.user = "root";

@@ -1,6 +1,4 @@
 package it.betacom.main;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class Student {
@@ -28,7 +26,6 @@ public class Student {
 	public void setNome(String nome) {
 		this.nome = nome;
 	}
-
 
 	public LocalDateTime getDataEstrazione() {
 		return dataEstrazione;

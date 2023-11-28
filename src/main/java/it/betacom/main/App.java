@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -26,46 +27,54 @@ import com.itextpdf.text.Font;
 import com.itextpdf.text.FontFactory;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.pdf.PdfWriter;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class App {
 	
 	private static List<Student> listaStudenti = new ArrayList<Student>();
-	
-    private static Connection connectToDB() {
-        Connection con = null;
-        try {
-        	DB db = DB.getInstance();
-        	con = DriverManager.getConnection(db.getConnection(), db.getUser(), db.getPassword());
-            try (Statement stm = con.createStatement()) {
-                createDb(stm);
-                System.out.println("Database creato correttamente");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return con;
-    }
+	private static final Logger logger = LogManager.getLogger(App.class);
+
+	private static Connection connectToDB(){
+		Connection con = null;
+		DB db = DB.getInstance();
+		try {
+			con = DriverManager.getConnection(db.getConnection(), db.getUser(), db.getPassword());
+			logger.info("connesso correttamente");
+		} catch (SQLException e1) {
+			logger.error("non connesso ricontrollare dati utente e porta ");
+		}
+		try (Statement stm = con.createStatement()) {
+			createDb(stm);
+			logger.info("Database creato correttamente");
+		} catch (SQLException e) {
+			logger.error("Database Non creato");
+		}
+		return con;
+	}
 
     private static void createDb(Statement stm) throws SQLException {
         try {
             stm.executeUpdate("DROP SCHEMA IF EXISTS academyExtraction");
         } catch (SQLException e) {
-            e.printStackTrace();
+        	logger.info("Database droppato");
         }
         stm.executeUpdate("CREATE SCHEMA academyExtraction");
     }
 
     private static void createTableStudenti(Statement stm) throws SQLException {
         stm.executeUpdate("CREATE TABLE studenti (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(50) NOT NULL, sede VARCHAR(50) NOT NULL)");
+        logger.info("Tabella studenti creata correttamente");
     }
 
     private static void createTableEstrazioni(Statement stm) throws SQLException {
-        stm.executeUpdate("CREATE TABLE estrazioni (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(50) NOT NULL, sede VARCHAR(50) NOT NULL, momento_estrazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+       stm.executeUpdate("CREATE TABLE estrazioni (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(50) NOT NULL, sede VARCHAR(50) NOT NULL, momento_estrazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+       logger.info("Tabella studenti creata correttamente");
     }
     
     private static void popolatabellaStudenti(Statement stm, String nome, String sede) throws SQLException {
     	stm.executeUpdate("INSERT INTO studenti(nome, sede) VALUES('" + nome + "','" + sede + "')");
+    	logger.info("insert avvenuta con successo");
     }
     
     private static void CsvReader(Statement stm) throws IOException, SQLException{
@@ -76,7 +85,6 @@ public class App {
                    // Ad esempio, se il tuo CSV ha due colonne 'Nome' e 'Città'
                    String nome = csvRecord.get(0); // O usa il nome della colonna se definito
                    String sede = csvRecord.get(1);
-                   System.out.println("Nome: "  + nome + " || " + "sede: " + sede);
                    popolatabellaStudenti(stm, nome,sede);
                }
            }
@@ -87,7 +95,6 @@ public class App {
 		 ResultSet rs = stm.executeQuery(query);
 		 if (rs.next()) {
 		        int id = rs.getInt("id");
-		        System.out.println("ID: " + id);
 		        return id;
 		    }
 		return 0;
@@ -112,9 +119,11 @@ public class App {
                 listaStudenti.add(new Student(nome, sede, LocalDateTime.now()));
             }
             stm.executeUpdate(queryinsert);
+            System.out.println("----------------");
+            System.out.println("nome: " + nome );
+            System.out.println( "sede: " + sede);
         }
     }
-
     
     private static void generaPDF(List<Student> listaStudenti) {
     	
@@ -135,8 +144,6 @@ public class App {
         }
     }
 
-
-
     public static void main(String[] args) {
     	
         try (Connection con = connectToDB()) {
@@ -150,8 +157,11 @@ public class App {
 						CsvReader(stm);
 						//prendo l id dell ultimo record 
 						int Ultimorecord = getLastRecord(stm);
-						//faccio estrazione per 10 volte
-						for(int i = 0; i < 30; i++) {
+						Scanner scanner = new Scanner(System.in);
+						//faccio estrazione per n volte chiesto
+						System.out.println("quante estrazioni facciamo?");
+						int numeroExtraction = scanner.nextInt();
+						for(int i = 0; i < numeroExtraction; i++) {
 							int randomNum = 0;
 							randomNum = (int)(Math.random() * Ultimorecord) + 1;
 							doExtractionQuery(stm, randomNum,listaStudenti );
