@@ -1,5 +1,7 @@
 package it.betacom.main;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
@@ -9,24 +11,37 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.FontFactory;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.pdf.PdfWriter;
+
 
 public class App {
-
+	
+	private static List<Student> listaStudenti = new ArrayList<Student>();
+	
     private static Connection connectToDB() {
         Connection con = null;
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/", "root", "root");
+        	DB db = DB.getInstance();
+        	con = DriverManager.getConnection(db.getConnection(), db.getUser(), db.getPassword());
             try (Statement stm = con.createStatement()) {
                 createDb(stm);
                 System.out.println("Database creato correttamente");
             }
-        } catch (ClassNotFoundException | SQLException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
         return con;
@@ -78,17 +93,49 @@ public class App {
 		return 0;
     }
     
-    private static void doExtractionQuery(Statement stm, int randomNum) throws SQLException {
-    	String queryselect = "SELECT nome, sede FROM studenti WHERE id = " + randomNum ;
-    	ResultSet rs = stm.executeQuery(queryselect);
-    	if (rs.next()) {
-	        String nome = rs.getString("nome");
-	        String sede = rs.getString("sede");
-	        String queryinsert = "INSERT INTO estrazioni (nome, sede) VALUES('" + nome + "','" + sede + "')";
-	        stm.executeUpdate(queryinsert);
-	    }
-    	
+    private static void doExtractionQuery(Statement stm, int randomNum, List<Student> listaStudenti) throws SQLException {
+        String queryselect = "SELECT nome, sede FROM studenti WHERE id = " + randomNum;
+        ResultSet rs = stm.executeQuery(queryselect);
+        if (rs.next()) {
+            String nome = rs.getString("nome");
+            String sede = rs.getString("sede");
+            String queryinsert = "INSERT INTO estrazioni (nome, sede) VALUES('" + nome + "','" + sede + "')";
+            boolean found = false;
+            for (Student student : listaStudenti) {
+                if (student.getNome().equals(nome) && student.getSede().equals(sede)) {
+                    student.incrementExtractionCount();
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                listaStudenti.add(new Student(nome, sede, LocalDateTime.now()));
+            }
+            stm.executeUpdate(queryinsert);
+        }
     }
+
+    
+    private static void generaPDF(List<Student> listaStudenti) {
+    	
+    	listaStudenti.sort((s1, s2) -> Integer.compare(s2.getExtractionCount(), s1.getExtractionCount()));
+
+        Document document = new Document();
+        try {
+            PdfWriter.getInstance(document, new FileOutputStream("ReportEstrazioni.pdf"));
+            document.open();
+            Font font = FontFactory.getFont(FontFactory.TIMES_ROMAN, 12, BaseColor.BLACK);
+            for (Student student : listaStudenti) {
+                Paragraph p = new Paragraph("Nome: " + student.getNome() + " Sede: " + student.getSede() + " Data ultima estrazione: " + student.getDataEstrazione() + " Estratto: " + student.getExtractionCount() + " volte", font);
+                document.add(p);
+            }
+            document.close();
+        } catch (DocumentException | FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     public static void main(String[] args) {
     	
@@ -103,8 +150,13 @@ public class App {
 						CsvReader(stm);
 						//prendo l id dell ultimo record 
 						int Ultimorecord = getLastRecord(stm);
-						int randomNum = (int)(Math.random() * Ultimorecord) + 1;
-						doExtractionQuery(stm, randomNum);
+						//faccio estrazione per 10 volte
+						for(int i = 0; i < 30; i++) {
+							int randomNum = 0;
+							randomNum = (int)(Math.random() * Ultimorecord) + 1;
+							doExtractionQuery(stm, randomNum,listaStudenti );
+							generaPDF(listaStudenti);
+						}
 						
 					} catch (IOException e) {
 						e.printStackTrace();
